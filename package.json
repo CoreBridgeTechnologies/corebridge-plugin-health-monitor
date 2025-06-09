@@ -1,0 +1,75 @@
+{
+  "name": "corebridge-plugin-health-monitor",
+  "version": "1.0.0",
+  "description": "CoreBridge Health Monitor Plugin - Complete monitoring solution with self-monitoring, core integration, and multi-service health checks",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "docker:build": "docker build -t corebridge-corebridge-health-monitor .",
+    "docker:run": "docker run --rm -p 3002:3002 --name corebridge-health-monitor corebridge-corebridge-health-monitor",
+    "docker:compose:up": "docker-compose up --build -d",
+    "docker:compose:down": "docker-compose down",
+    "docker:compose:logs": "docker-compose logs -f"
+  },
+  "keywords": [
+    "corebridge",
+    "health-monitor",
+    "plugin",
+    "rabbitmq",
+    "microservices",
+    "monitoring"
+  ],
+  "author": "CoreBridge Team",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "express": "^4.18.2",
+    "winston": "^3.11.0",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.3.1",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.1.5",
+    "compression": "^1.7.4",
+    "amqplib": "^0.10.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "eslint": "^8.54.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "corebridge": {
+    "plugin": {
+      "type": "health-monitor",
+      "version": "1.0.0",
+      "capabilities": [
+        "self-monitoring",
+        "core-integration",
+        "rabbitmq-health",
+        "database-health",
+        "service-health"
+      ],
+      "requirements": {
+        "corebridge-core": ">=1.0.0"
+      },
+      "integration": {
+        "coreComponents": true,
+        "rabbitMQ": true,
+        "database": true,
+        "selfMonitoring": true
+      }
+    }
+  }
+} 

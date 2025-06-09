@@ -1,0 +1,49 @@
+{
+  "id": "health-monitor",
+  "name": "Health Monitor",
+  "description": "Monitor system health and performance metrics across all CoreBridge services",
+  "version": "1.0.0",
+  "author": "CoreBridge Team",
+  "category": "monitoring",
+  "tags": ["monitoring", "health", "performance", "metrics"],
+  "icon": "health_and_safety",
+  "port": 3002,
+
+  "endpoints": {
+    "health": "/health",
+    "status": "/status",
+    "metrics": "/metrics"
+  },
+  "dependencies": {
+    "corebridge": ">=1.0.0",
+    "rabbitmq": "^3.9.0",
+    "redis": "^4.0.0",
+    "postgresql": "^14.0.0"
+  },
+  "permissions": [
+    "system.read",
+    "metrics.read",
+    "health.read",
+    "rabbitmq.read"
+  ],
+  "configuration": {
+    "healthCheckInterval": 30000,
+    "metricsInterval": 15000,
+    "alertingEnabled": true
+  },
+  "documentation": {
+    "readme": "README.md",
+    "api": "docs/api.md",
+    "setup": "docs/setup.md"
+  },
+  "repository": {
+    "type": "internal",
+    "url": "internal://corebridge/plugins/health-monitor"
+  },
+  "license": "Proprietary",
+  "corebridge": {
+    "minVersion": "1.0.0",
+    "maxVersion": "2.0.0",
+    "apiVersion": "1.0"
+  }
+} 
