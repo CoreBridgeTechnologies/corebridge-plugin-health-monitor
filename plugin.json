@@ -7,7 +7,8 @@
   "category": "monitoring",
   "tags": ["monitoring", "health", "performance", "metrics"],
   "icon": "health_and_safety",
-  "port": 3002,
+  "port": 3003,
+  "host": "172.17.0.1",
 
   "endpoints": {
     "health": "/health",

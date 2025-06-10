@@ -1,62 +1,38 @@
 # CoreBridge Health Monitor Plugin
 
-> **🔧 Reference Implementation** - This plugin serves as the complete reference implementation for CoreBridge plugin development, demonstrating auto-discovery, health monitoring, core integration, and best practices.
+**Core Module** - License-free system health monitoring and infrastructure diagnostics.
 
-🚀 **Complete demonstration of CoreBridge plugin development and integration**
+## Overview
 
-A fully functional health monitoring plugin that showcases how to build, integrate, and deploy plugins for the CoreBridge platform. This demo includes comprehensive documentation, working code, and real-world integration patterns.
+The Health Monitor Plugin is a core CoreBridge module that provides comprehensive system health monitoring, performance metrics, and real-time diagnostics for the CoreBridge platform and its components.
 
-## 📋 What This Demo Includes
-
-- ✅ **Working Plugin Implementation** - Complete health monitoring plugin with all features
-- ✅ **Integration Documentation** - Step-by-step guides for plugin development
-- ✅ **Core System Integration** - Real-world patterns for CoreBridge integration
-- ✅ **RabbitMQ Messaging** - Database access via message queues
-- ✅ **Self-Monitoring** - Memory, CPU, and performance monitoring
-- ✅ **Production Ready** - Docker, logging, graceful shutdown, error handling
-- ✅ **Comprehensive Testing** - Integration tests and validation procedures
-
-## 🔧 Demo Description
-
-This repository demonstrates a production-ready health monitoring plugin that monitors application health through core components, RabbitMQ integration, and self-monitoring capabilities.
+As a **core module**, this plugin operates without licensing restrictions and provides essential infrastructure monitoring capabilities.
 
 ## Features
 
-### 🔍 **Core Integration**
-- **Read-only access** to core system components via `core-context` folder
-- Automatic core system configuration parsing
-- Core API health monitoring and metrics collection
-- Plugin registration with core system
+### 🔍 System Health Monitoring
+- **Core API Health**: Real-time monitoring of CoreBridge Core API
+- **Infrastructure Services**: Database, cache, and message queue health checks
+- **Service Discovery**: Automatic detection and monitoring of platform services
+- **Real-time Diagnostics**: Live health status reporting and alerting
 
-### 🐰 **RabbitMQ Integration**
-- Database health monitoring via RabbitMQ message queues
-- Health metrics publishing and alerting
-- Reliable message delivery with error handling
-- Automatic reconnection and failover
+### 📊 Performance Metrics
+- **Self-Monitoring**: Memory, CPU, and event loop performance tracking
+- **Response Time Metrics**: API endpoint performance monitoring
+- **System Resource Monitoring**: Host system resource utilization
+- **Historical Data**: Performance trend analysis and reporting
 
-### 📊 **Self-Monitoring**
-- Real-time monitoring of the health monitor itself
-- Memory, CPU, and event loop monitoring
-- Performance metrics and alerting
-- Configurable thresholds and alerts
+### 🚨 Intelligent Alerting
+- **Configurable Thresholds**: Customizable alert thresholds for various metrics
+- **Severity Classification**: Info, warning, and critical alert levels
+- **RabbitMQ Integration**: Alert distribution via message queues
+- **Deduplication**: Intelligent alert throttling and deduplication
 
-### 🎯 **Multi-Target Health Checks**
-- HTTP/HTTPS endpoint monitoring
-- TCP port connectivity checks
-- Configurable intervals and timeouts
-- Critical vs non-critical target classification
-
-### 🚨 **Intelligent Alerting**
-- Severity-based alert classification (info, warning, critical)
-- RabbitMQ-based alert distribution
-- Throttling and deduplication
-- Escalation rules for persistent issues
-
-### 📈 **Comprehensive Metrics**
-- Real-time health status reporting
-- Performance metrics collection
-- Historical data retention
-- Integration with core monitoring systems
+### 🔧 Integration Features
+- **Core System Integration**: Read-only access to core configuration
+- **RabbitMQ Messaging**: Asynchronous health data publishing
+- **Plugin Discovery**: Automatic registration with CoreBridge Core
+- **Docker Ready**: Containerized deployment with health checks
 
 ## Architecture
 
@@ -65,67 +41,80 @@ This repository demonstrates a production-ready health monitoring plugin that mo
 │                Health Monitor Plugin                        │
 ├─────────────────┬─────────────────┬─────────────────────────┤
 │  Self-Monitor   │  Core Integration│     RabbitMQ Service   │
-│  - Memory/CPU   │  - API Health    │     - DB Health Checks │
-│  - Event Loop   │  - Metrics       │     - Alert Publishing │
+│  - Memory/CPU   │  - API Health    │     - Health Publishing│
+│  - Event Loop   │  - Metrics       │     - Alert Distribution│
 │  - Performance  │  - Registration  │     - Metrics Reporting│
 └─────────────────┴─────────────────┴─────────────────────────┘
            │                 │                       │
            ▼                 ▼                       ▼
     ┌─────────────┐  ┌─────────────┐        ┌─────────────┐
-    │   Logs &    │  │ Core System │        │  RabbitMQ   │
-    │   Metrics   │  │    API      │        │   Queues    │
+    │   Logs &    │  │ CoreBridge  │        │  RabbitMQ   │
+    │   Metrics   │  │  Core API   │        │   Queues    │
     └─────────────┘  └─────────────┘        └─────────────┘
 ```
 
-## Installation
+## Quick Start
 
 ### Prerequisites
 
-- Node.js >= 16.0.0
-- npm >= 8.0.0
-- Access to CoreBridge core system
-- RabbitMQ server running
-- Core system with read-only access via `core-context`
+- Node.js >= 18.0.0
+- CoreBridge Core system running
+- RabbitMQ server accessible
+- Docker (for containerized deployment)
 
-### Setup
+### Installation
 
-1. **Install dependencies:**
+1. **Navigate to plugin directory:**
+```bash
+cd plugins/health-monitor
+```
+
+2. **Install dependencies:**
 ```bash
 npm install
 ```
 
-2. **Create environment configuration:**
+3. **Start the plugin:**
 ```bash
-cp .env.example .env
-# Edit .env with your configuration
+# Development mode
+npm run dev
+
+# Production mode
+npm start
+
+# Docker deployment
+npm run docker:compose:up
 ```
 
-3. **Ensure core-context is properly linked:**
-```bash
-# The core-context folder should already be linked and read-only
-ls -la core-context/
-```
+### Verification
 
-4. **Create logs directory:**
+Check plugin health and registration:
+
 ```bash
-mkdir -p logs
+# Plugin health check
+curl http://localhost:3003/health
+
+# View metrics
+curl http://localhost:3003/metrics
+
+# Check CoreBridge registration
+curl http://localhost:4001/api/plugins/health-monitor
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-Create a `.env` file in the project root with the following variables:
+The plugin supports the following configuration options:
 
 ```bash
 # Plugin Configuration
-NODE_ENV=development
-PLUGIN_PORT=3002
+PORT=3003
+NODE_ENV=production
 LOG_LEVEL=info
 
 # Core System Integration
 COREBRIDGE_API_URL=http://localhost:4001
-COREBRIDGE_API_KEY=your_core_api_key_here
 COREBRIDGE_TIMEOUT=30000
 
 # RabbitMQ Configuration
@@ -133,263 +122,336 @@ RABBITMQ_HOST=localhost
 RABBITMQ_PORT=5672
 RABBITMQ_USER=admin
 RABBITMQ_PASSWORD=password
-RABBITMQ_VHOST=/
 
-# Security
-ENABLE_API_KEY=true
-API_KEY=health-monitor-secret-key
-ENABLE_RATE_LIMIT=true
-RATE_LIMIT_WINDOW=60000
-RATE_LIMIT_MAX=100
-
-# Self-Monitoring
-ENABLE_DETAILED_METRICS=true
-
-# Logging
-LOG_TO_FILE=true
-LOG_TO_CONSOLE=true
-LOG_COLORIZE=true
-LOG_MAX_SIZE=10MB
-LOG_MAX_FILES=5
+# Monitoring Configuration
+HEALTH_CHECK_INTERVAL=30000
+METRICS_COLLECTION_INTERVAL=15000
+ALERT_THRESHOLD_MEMORY=80
+ALERT_THRESHOLD_CPU=80
 ```
 
-### Core Configuration
+### Core Integration
 
-The plugin automatically reads configuration from the core system via the read-only `core-context` folder. This includes:
+The plugin automatically integrates with CoreBridge Core through:
 
-- Database connection settings
-- RabbitMQ configuration
-- Logging preferences
-- Service endpoints
+- **Auto-discovery**: Automatic plugin detection and registration
+- **Health Reporting**: Regular health status updates to core
+- **Configuration Sync**: Dynamic configuration from core system
+- **Service Monitoring**: Monitoring of core and related services
 
-## Usage
+## API Reference
 
-### Starting the Plugin
+### Health Endpoints
 
-#### Development Mode
-```bash
-npm run dev
+#### GET /health
+Returns basic plugin health status.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-10T12:00:00.000Z",
+  "uptime": 3600,
+  "version": "1.0.0",
+  "service": "Health Monitor Plugin",
+  "licensing": { "required": false, "type": "core" }
+}
 ```
 
-#### Production Mode
-```bash
-npm start
-```
+#### GET /status
+Returns comprehensive plugin status and configuration.
 
-### API Endpoints
-
-#### Public Endpoints
-
-- **GET /health** - Plugin health status (no auth required)
-
-#### Authenticated Endpoints (require API key)
-
-- **GET /status** - Comprehensive plugin status
-- **GET /metrics** - Real-time metrics and performance data
-- **GET /health-results** - Latest health check results
-- **GET /alerts?limit=50&severity=critical** - Recent alerts
-- **POST /control/pause** - Pause monitoring
-- **POST /control/resume** - Resume monitoring
-- **POST /control/force-check** - Force immediate health check
-
-#### Authentication
-
-Include API key in request headers:
-```bash
-curl -H "X-API-Key: your-api-key" http://localhost:3002/status
-# OR
-curl -H "Authorization: Bearer your-api-key" http://localhost:3002/metrics
-```
-
-### Example Usage
-
-#### Check Plugin Health
-```bash
-curl http://localhost:3002/health
-```
-
-#### Get Comprehensive Status
-```bash
-curl -H "X-API-Key: health-monitor-secret-key" \
-  http://localhost:3002/status
-```
-
-#### View Recent Alerts
-```bash
-curl -H "X-API-Key: health-monitor-secret-key" \
-  "http://localhost:3002/alerts?severity=critical&limit=10"
-```
-
-#### Force Health Check
-```bash
-curl -X POST \
-  -H "X-API-Key: health-monitor-secret-key" \
-  http://localhost:3002/control/force-check
-```
-
-## Health Check Targets
-
-Configure monitoring targets in `src/config/index.js`:
-
-```javascript
-healthTargets: [
-  {
-    name: 'CoreBridge Core API',
-    type: 'http',
-    url: 'http://localhost:4001/health',
-    method: 'GET',
-    expectedStatus: 200,
-    timeout: 5000,
-    critical: true,
-    interval: 30000
+**Response:**
+```json
+{
+  "status": "running",
+  "version": "1.0.0",
+  "uptime": 3600,
+  "plugin": "health-monitor",
+  "licensing": { "required": false, "type": "core" },
+  "configuration": {
+    "healthCheckInterval": 30000,
+    "metricsInterval": 15000
   },
-  {
-    name: 'Redis Cache',
-    type: 'tcp',
-    host: 'localhost',
-    port: 6379,
-    timeout: 3000,
-    critical: false,
-    interval: 45000
+  "integrations": {
+    "corebridge": "connected",
+    "rabbitmq": "connected"
   }
-]
+}
+```
+
+### Metrics Endpoints
+
+#### GET /metrics
+Returns real-time performance metrics.
+
+**Response:**
+```json
+{
+  "timestamp": "2025-01-10T12:00:00.000Z",
+  "plugin": {
+    "uptime": 3600,
+    "isRunning": true,
+    "health": "healthy"
+  },
+  "system": {
+    "memory": {
+      "used": 45.2,
+      "free": 54.8,
+      "total": 8192
+    },
+    "cpu": {
+      "usage": 12.5,
+      "loadAverage": [1.2, 1.1, 1.0]
+    }
+  },
+  "healthChecks": {
+    "targets": [
+      {
+        "name": "CoreBridge Core API",
+        "status": "healthy",
+        "responseTime": 15
+      },
+      {
+        "name": "Redis Cache",
+        "status": "healthy", 
+        "responseTime": 2
+      },
+      {
+        "name": "RabbitMQ Management",
+        "status": "healthy",
+        "responseTime": 8
+      }
+    ]
+  }
+}
+```
+
+## Health Monitoring Targets
+
+The plugin monitors the following system components:
+
+### Core Services
+- **CoreBridge Core API** - Main API server health and response times
+- **Plugin Registry** - Plugin discovery and management system
+- **Service Registry** - Service discovery and health tracking
+
+### Infrastructure Services  
+- **PostgreSQL Database** - Database connectivity and performance
+- **Redis Cache** - Cache server health and response times
+- **RabbitMQ Message Queue** - Message queue connectivity and management
+
+### Self-Monitoring
+- **Memory Usage** - Plugin memory consumption and garbage collection
+- **CPU Usage** - Processing load and performance metrics
+- **Event Loop Lag** - Node.js event loop performance
+- **Request Performance** - API endpoint response times
+
+## Deployment
+
+### Docker Deployment
+
+The plugin includes full Docker support:
+
+```bash
+# Build container
+npm run docker:build
+
+# Deploy with Docker Compose
+npm run docker:compose:up
+
+# View logs
+npm run docker:logs
+
+# Stop deployment
+npm run docker:compose:down
+```
+
+### Docker Compose Configuration
+
+The plugin integrates with the CoreBridge Docker network:
+
+```yaml
+version: '3.8'
+services:
+  health-monitor:
+    build: .
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - COREBRIDGE_API_URL=http://corebridge-core:4001
+      - RABBITMQ_HOST=rabbitmq
+    networks:
+      - corebridge
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  corebridge:
+    external: true
 ```
 
 ## Monitoring & Alerting
 
-### Alert Severities
+### Alert Thresholds
 
-- **INFO** - Informational messages
-- **WARNING** - Non-critical issues requiring attention
-- **CRITICAL** - Critical issues requiring immediate action
+The plugin provides configurable alert thresholds:
 
-### Metrics Collected
+| Metric | Warning | Critical |
+|--------|---------|----------|
+| Memory Usage | 70% | 85% |
+| CPU Usage | 70% | 85% |
+| Event Loop Lag | 50ms | 100ms |
+| Response Time | 1s | 5s |
+| Service Downtime | 30s | 60s |
 
-#### System Metrics
-- Memory usage (RSS, heap)
-- CPU utilization
-- Event loop delay
-- System load average
+### Alert Distribution
 
-#### Application Metrics
-- Health check response times
-- Success/failure rates
-- RabbitMQ connection status
-- Core system integration status
-
-#### Health Check Metrics
-- Target availability
-- Response times
-- Error rates
-- Alert frequencies
-
-## Integration with Core System
-
-### RabbitMQ Queues
-
-The plugin uses the following RabbitMQ queues:
-
-- `health.metrics` - Health metrics data
-- `health.alerts` - Alert notifications
-- `system.status` - System status updates
-- `database.health` - Database health check requests/responses
-
-### Database Health Monitoring
-
-Database health is monitored via RabbitMQ message queues to the core system:
-
-```javascript
-// Automatic health queries
-{
-  basic: 'SELECT 1',
-  connections: 'SELECT count(*) FROM pg_stat_activity',
-  uptime: 'SELECT EXTRACT(EPOCH FROM (now() - pg_postmaster_start_time()))'
-}
-```
+Alerts are distributed through:
+- **RabbitMQ Queues**: Asynchronous alert delivery
+- **Log Files**: Structured logging for analysis
+- **Health Endpoints**: Real-time status via API
+- **Core Integration**: Status updates to CoreBridge Core
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Plugin won't start**
-   - Check if core-context folder is accessible
-   - Verify RabbitMQ is running and accessible
-   - Check environment variables in .env
+#### Plugin Not Starting
+```bash
+# Check logs
+tail -f logs/health-monitor.log
 
-2. **Core integration failing**
-   - Verify COREBRIDGE_API_URL is correct
-   - Check API key configuration
-   - Ensure core system is running
+# Verify dependencies
+npm install
 
-3. **RabbitMQ connection issues**
-   - Verify RabbitMQ credentials
-   - Check network connectivity
-   - Review RabbitMQ logs
+# Check port availability
+lsof -i :3003
+```
 
-4. **High memory usage**
-   - Check self-monitoring alerts
-   - Review metrics retention settings
-   - Consider increasing thresholds
+#### Health Checks Failing
+```bash
+# Test plugin health
+curl http://localhost:3003/health
 
-### Logs
+# Check core connectivity
+curl http://localhost:4001/health
 
-Logs are written to:
-- Console (if enabled)
-- `logs/health-monitor-plugin.log` - Main application logs
-- `logs/health-metrics.log` - Metrics data
-- `logs/exceptions.log` - Uncaught exceptions
-- `logs/rejections.log` - Unhandled promise rejections
+# Verify RabbitMQ connection
+curl http://localhost:15672
+```
+
+#### High Memory Usage
+```bash
+# Check memory metrics
+curl http://localhost:3003/metrics
+
+# Restart plugin
+npm restart
+
+# Check for memory leaks
+node --inspect src/index.js
+```
 
 ### Debug Mode
 
-Enable debug logging:
+Enable detailed debugging:
+
 ```bash
-LOG_LEVEL=debug npm run dev
+# Set debug environment
+export LOG_LEVEL=debug
+export NODE_ENV=development
+
+# Start with debug logging
+npm run dev
+
+# View debug logs
+tail -f logs/health-monitor.log | grep DEBUG
 ```
 
 ## Development
 
-### Project Structure
+### Local Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run in development mode
+npm run dev
+
+# Run tests
+npm test
+
+# Run linting
+npm run lint
+```
+
+### Plugin Integration
+
+This plugin demonstrates core module best practices:
+
+- **Auto-discovery**: Proper plugin.json configuration
+- **Health Endpoints**: Required health and status endpoints
+- **Graceful Shutdown**: Proper cleanup and signal handling
+- **Error Handling**: Comprehensive error management
+- **Logging**: Structured logging with multiple transports
+
+### Code Structure
 
 ```
 src/
-├── config/
-│   └── index.js          # Configuration management
+├── index.js                 # Main application entry point
 ├── services/
-│   ├── HealthMonitorPlugin.js      # Main plugin orchestrator
-│   ├── RabbitMQService.js          # RabbitMQ integration
-│   ├── CoreIntegrationService.js   # Core system integration
-│   └── SelfMonitoringService.js    # Self-monitoring
+│   ├── HealthMonitorPlugin.js     # Core plugin logic
+│   ├── CoreIntegrationService.js  # CoreBridge integration
+│   ├── RabbitMQService.js         # Message queue integration
+│   └── SelfMonitoringService.js   # Self-monitoring logic
 ├── utils/
-│   └── logger.js         # Logging utilities
-└── index.js              # Application entry point
+│   ├── logger.js            # Logging configuration
+│   └── config.js            # Configuration management
+└── middleware/
+    ├── errorHandler.js      # Error handling middleware
+    └── validation.js        # Request validation
 ```
 
-### Adding New Health Targets
+## Related Documentation
 
-1. Add target configuration to `healthTargets` array
-2. Implement custom check logic if needed
-3. Update documentation
-
-### Extending Monitoring
-
-1. Add new metrics to `SelfMonitoringService`
-2. Update RabbitMQ message schemas
-3. Add corresponding API endpoints
-
-## License
-
-MIT License - see LICENSE file for details.
+- **[Plugin System Documentation](../../docs/plugin-system.md)** - Complete plugin development guide
+- **[CoreBridge Core Documentation](../../README.md)** - Main system documentation
+- **[Development Guide](../../docs/development-guide.md)** - Development best practices
+- **[Deployment Guide](../../docs/deployment-guide.md)** - Production deployment
+- **[Troubleshooting Guide](../../docs/troubleshooting.md)** - Common issues and solutions
 
 ## Support
 
-For issues and questions:
-1. Check logs for error details
-2. Review configuration settings
-3. Verify core system integration
-4. Contact CoreBridge support team
+For support and development assistance:
 
----
+### Health Monitoring
+```bash
+# Check plugin health
+curl http://localhost:3003/health
 
-**CoreBridge Health Monitor Plugin v1.0.0**  
-*Comprehensive health monitoring for CoreBridge platform* 
+# View comprehensive status
+curl http://localhost:3003/status
+
+# Monitor performance metrics
+curl http://localhost:3003/metrics
+```
+
+### Logging
+- **Application Logs**: `logs/health-monitor.log`
+- **Error Logs**: `logs/error.log`
+- **Debug Logs**: Enable with `LOG_LEVEL=debug`
+
+### Integration Support
+- **CoreBridge Integration**: Automatic plugin discovery and registration
+- **RabbitMQ Integration**: Health data publishing and alert distribution
+- **Docker Integration**: Full containerization support
+
+The Health Monitor Plugin provides essential infrastructure monitoring capabilities for the CoreBridge platform, serving as both a production-ready monitoring solution and a reference implementation for core module development. 
