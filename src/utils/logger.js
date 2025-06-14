@@ -22,13 +22,27 @@ const healthMonitorFormat = winston.format.combine(
   })
 );
 
+// Safe JSON stringification that handles circular references
+const safeStringify = (obj) => {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (key, val) => {
+    if (val != null && typeof val === "object") {
+      if (seen.has(val)) {
+        return "[Circular]";
+      }
+      seen.add(val);
+    }
+    return val;
+  });
+};
+
 // JSON format for structured logging
 const jsonFormat = winston.format.combine(
   winston.format.timestamp(),
   winston.format.errors({ stack: true }),
   winston.format.json(),
   winston.format.printf((info) => {
-    return JSON.stringify({
+    return safeStringify({
       ...info,
       service: 'health-monitor-plugin',
       version: config.plugin.version
@@ -73,7 +87,7 @@ if (config.logging.metrics && config.logging.metrics.enabled) {
       winston.format.printf((info) => {
         // Only log metrics-related entries
         if (info.type === 'metrics' || info.metrics) {
-          return JSON.stringify({
+          return safeStringify({
             ...info,
             service: 'health-monitor-plugin',
             type: 'metrics'

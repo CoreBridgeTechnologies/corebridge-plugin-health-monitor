@@ -17,7 +17,7 @@ class CoreIntegrationService {
   /**
    * Initialize core integration service
    */
-  async initialize() {
+  async initialize(isIntegratedPlugin = false) {
     try {
       logger.info('Initializing Core Integration Service...');
       
@@ -27,8 +27,15 @@ class CoreIntegrationService {
       // Setup HTTP client for core API communication
       this.setupHttpClient();
       
-      // Verify core connection
-      await this.verifyConnection();
+      // For integrated/core plugins, skip connection verification during initialization
+      // The connection will be verified later during health checks
+      if (!isIntegratedPlugin) {
+        // Verify core connection
+        await this.verifyConnection();
+      } else {
+        logger.info('Skipping connection verification for integrated core plugin');
+        this.isConnected = true; // Assume connected since we're part of the core
+      }
       
       logger.info('Core Integration Service initialized successfully');
       return true;

@@ -43,13 +43,13 @@ class HealthMonitorPlugin {
   /**
    * Initialize the Health Monitor Plugin
    */
-  async initialize() {
+  async initialize(isIntegratedPlugin = false) {
     try {
       logger.info('Initializing Health Monitor Plugin...');
       
       // Initialize all services
       await this.rabbitMQ.initialize();
-      await this.coreIntegration.initialize();
+      await this.coreIntegration.initialize(isIntegratedPlugin);
       await this.selfMonitoring.initialize();
       
       // Register plugin with core system

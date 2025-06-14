@@ -7,8 +7,11 @@
   "category": "monitoring",
   "tags": ["monitoring", "health", "performance", "metrics"],
   "icon": "health_and_safety",
-  "port": 3003,
-  "host": "172.17.0.1",
+  "type": "core",
+  "integrated": true,
+  "requiresLicense": false,
+  "port": 4001,
+  "host": "127.0.0.1",
 
   "endpoints": {
     "health": "/health",
@@ -41,7 +44,7 @@
     "type": "internal",
     "url": "internal://corebridge/plugins/health-monitor"
   },
-  "license": "Proprietary",
+  "license": "Core",
   "corebridge": {
     "minVersion": "1.0.0",
     "maxVersion": "2.0.0",

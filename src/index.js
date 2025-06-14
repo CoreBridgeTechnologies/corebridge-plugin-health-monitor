@@ -8,315 +8,310 @@ const config = require('./config');
 const logger = require('./utils/logger');
 const HealthMonitorPlugin = require('./services/HealthMonitorPlugin');
 
-// Create Express app for API endpoints
-const app = express();
-
-// Security middleware
-app.use(helmet());
-app.use(cors());
-app.use(compression());
-
-// Rate limiting
-if (config.security.enableRateLimit) {
-  const limiter = rateLimit({
-    windowMs: config.security.rateLimitWindow,
-    max: config.security.rateLimitMax,
-    message: 'Too many requests from this IP, please try again later.'
-  });
-  app.use(limiter);
-}
-
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// API key authentication middleware (if enabled)
-const authenticateApiKey = (req, res, next) => {
-  if (!config.security.enableApiKey) {
-    return next();
-  }
-  
-  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
-  
-  if (!apiKey || apiKey !== config.security.apiKey) {
-    return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Valid API key required'
-    });
-  }
-  
-  next();
-};
-
-// Initialize Health Monitor Plugin
-const healthMonitor = new HealthMonitorPlugin();
-
-// Health endpoint (public)
-app.get('/health', (req, res) => {
-  const status = healthMonitor.getStatus();
-  const healthStatus = status.isRunning && !status.isPaused ? 'healthy' : 'unhealthy';
-  
-  res.status(healthStatus === 'healthy' ? 200 : 503).json({
-    status: healthStatus,
-    timestamp: new Date().toISOString(),
-    uptime: status.uptime,
-    version: config.plugin.version,
-    service: config.plugin.name
-  });
-});
-
-// Status endpoint (requires auth)
-app.get('/status', authenticateApiKey, (req, res) => {
-  try {
-    const status = healthMonitor.getStatus();
-    res.json({
-      success: true,
-      data: status,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    logger.error('Error getting status:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Metrics endpoint (requires auth)
-app.get('/metrics', authenticateApiKey, (req, res) => {
-  try {
-    const selfMetrics = healthMonitor.selfMonitoring.getCurrentMetrics();
-    const rabbitMQStatus = healthMonitor.rabbitMQ.getStatus();
-    const coreIntegration = healthMonitor.coreIntegration.getIntegrationStatus();
+/**
+ * Health Monitor Core Plugin
+ * Integrates health monitoring directly into the CoreBridge main application
+ */
+class HealthMonitorCorePlugin {
+  constructor() {
+    this.app = null;
+    this.healthMonitor = null;
+    this.router = express.Router();
+    this.initialized = false;
     
-    res.json({
-      success: true,
-      data: {
-        plugin: healthMonitor.getStatus(),
-        selfMonitoring: selfMetrics,
-        rabbitMQ: rabbitMQStatus,
-        coreIntegration: coreIntegration
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    logger.error('Error getting metrics:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
+    logger.info('Health Monitor Core Plugin constructor called');
   }
-});
 
-// Health results endpoint (requires auth)
-app.get('/health-results', authenticateApiKey, (req, res) => {
-  try {
-    const status = healthMonitor.getStatus();
-    res.json({
-      success: true,
-      data: {
-        lastCheck: status.lastFullHealthCheck,
-        results: status.healthResults,
-        summary: {
-          total: status.healthResults.length,
-          healthy: status.healthResults.filter(r => r.status === 'healthy').length,
-          unhealthy: status.healthResults.filter(r => r.status !== 'healthy').length
-        }
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    logger.error('Error getting health results:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Alerts endpoint (requires auth)
-app.get('/alerts', authenticateApiKey, (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 50;
-    const severity = req.query.severity;
-    
-    let alerts = healthMonitor.alerts;
-    
-    if (severity) {
-      alerts = alerts.filter(alert => alert.severity === severity);
+  /**
+   * Initialize the plugin
+   */
+  async initialize() {
+    try {
+      logger.info('Initializing Health Monitor Core Plugin...');
+      
+      // Initialize the actual health monitor service
+      this.healthMonitor = new HealthMonitorPlugin();
+      await this.healthMonitor.initialize(true); // Pass true to indicate this is a core/integrated plugin
+      
+      // Configure routes
+      this.setupRoutes();
+      
+      // Start health monitoring
+      await this.healthMonitor.start();
+      
+      this.initialized = true;
+      logger.info('Health Monitor Core Plugin initialized successfully');
+    } catch (error) {
+      logger.error('Failed to initialize Health Monitor Core Plugin:', error);
+      throw error;
     }
-    
-    alerts = alerts.slice(-limit);
-    
-    res.json({
-      success: true,
-      data: {
-        alerts,
-        count: alerts.length,
-        total: healthMonitor.alerts.length
-      },
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    logger.error('Error getting alerts:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
   }
-});
 
-// Control endpoints (requires auth)
-app.post('/control/pause', authenticateApiKey, async (req, res) => {
-  try {
-    await healthMonitor.pause();
-    res.json({
-      success: true,
-      message: 'Health monitoring paused',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    logger.error('Error pausing health monitor:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
+  /**
+   * Setup routes for the health monitor
+   */
+  setupRoutes() {
+    logger.info('Health Monitor: Setting up routes...');
 
-app.post('/control/resume', authenticateApiKey, async (req, res) => {
-  try {
-    await healthMonitor.resume();
-    res.json({
-      success: true,
-      message: 'Health monitoring resumed',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    logger.error('Error resuming health monitor:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-app.post('/control/force-check', authenticateApiKey, async (req, res) => {
-  try {
-    const results = await healthMonitor.runFullHealthCheck();
-    res.json({
-      success: true,
-      message: 'Health check completed',
-      data: results,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    logger.error('Error running forced health check:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  logger.error('Express error:', error);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Main application startup
-async function startApplication() {
-  try {
-    logger.info('Starting Health Monitor Plugin Application...');
-    
-    // Initialize and start health monitor
-    await healthMonitor.initialize();
-    await healthMonitor.start();
-    
-    // Start Express server
-    const server = app.listen(config.plugin.port, () => {
-      logger.info(`Health Monitor Plugin API listening on port ${config.plugin.port}`, {
-        port: config.plugin.port,
-        environment: config.plugin.environment,
-        version: config.plugin.version
-      });
-    });
-    
-    // Graceful shutdown handling
-    const gracefulShutdown = async (signal) => {
-      logger.info(`Received ${signal}, initiating graceful shutdown...`);
-      
-      // Stop accepting new connections
-      server.close(() => {
-        logger.info('HTTP server closed');
-      });
-      
-      try {
-        // Stop health monitor
-        await healthMonitor.cleanup();
-        logger.info('Health Monitor Plugin stopped successfully');
-        
-        // Exit process
-        process.exit(0);
-      } catch (error) {
-        logger.error('Error during graceful shutdown:', error);
-        process.exit(1);
+    // Security middleware for API routes
+    const authenticateApiKey = (req, res, next) => {
+      if (!config.security.enableApiKey) {
+        return next();
       }
+      
+      const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+      
+      if (!apiKey || apiKey !== config.security.apiKey) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Valid API key required'
+        });
+      }
+      
+      next();
     };
-    
-    // Register signal handlers
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    
-    // Handle uncaught exceptions
-    process.on('uncaughtException', (error) => {
-      logger.error('Uncaught Exception:', error);
-      gracefulShutdown('uncaughtException');
+
+    // Rate limiting for health monitor endpoints
+    const healthLimiter = rateLimit({
+      windowMs: 60000, // 1 minute
+      max: 100, // limit each IP to 100 requests per windowMs
+      message: 'Too many health check requests from this IP, please try again later.'
     });
-    
-    // Handle unhandled promise rejections
-    process.on('unhandledRejection', (reason, promise) => {
-      logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-      gracefulShutdown('unhandledRejection');
+
+    // Apply rate limiting to all routes
+    this.router.use(healthLimiter);
+
+    // Health endpoint (public)
+    this.router.get('/health', (req, res) => {
+      const status = this.healthMonitor.getStatus();
+      const healthStatus = status.isRunning && !status.isPaused ? 'healthy' : 'unhealthy';
+      
+      res.status(healthStatus === 'healthy' ? 200 : 503).json({
+        status: healthStatus,
+        timestamp: new Date().toISOString(),
+        uptime: status.uptime,
+        version: config.plugin.version,
+        service: config.plugin.name
+      });
     });
-    
-    logger.info('Health Monitor Plugin Application started successfully');
-    
-  } catch (error) {
-    logger.error('Failed to start Health Monitor Plugin Application:', error);
-    process.exit(1);
+
+    // Status endpoint (requires auth)
+    this.router.get('/status', authenticateApiKey, (req, res) => {
+      try {
+        const status = this.healthMonitor.getStatus();
+        res.json({
+          success: true,
+          data: status,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error('Error getting status:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    // Metrics endpoint (requires auth)
+    this.router.get('/metrics', authenticateApiKey, (req, res) => {
+      try {
+        const selfMetrics = this.healthMonitor.selfMonitoring.getCurrentMetrics();
+        const rabbitMQStatus = this.healthMonitor.rabbitMQ.getStatus();
+        const coreIntegration = this.healthMonitor.coreIntegration.getIntegrationStatus();
+        
+        res.json({
+          success: true,
+          data: {
+            plugin: this.healthMonitor.getStatus(),
+            selfMonitoring: selfMetrics,
+            rabbitMQ: rabbitMQStatus,
+            coreIntegration: coreIntegration
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error('Error getting metrics:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    // Health results endpoint (requires auth)
+    this.router.get('/health-results', authenticateApiKey, (req, res) => {
+      try {
+        const status = this.healthMonitor.getStatus();
+        res.json({
+          success: true,
+          data: {
+            lastCheck: status.lastFullHealthCheck,
+            results: status.healthResults,
+            summary: {
+              total: status.healthResults.length,
+              healthy: status.healthResults.filter(r => r.status === 'healthy').length,
+              unhealthy: status.healthResults.filter(r => r.status !== 'healthy').length
+            }
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error('Error getting health results:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    // Alerts endpoint (requires auth)
+    this.router.get('/alerts', authenticateApiKey, (req, res) => {
+      try {
+        const limit = parseInt(req.query.limit) || 50;
+        const severity = req.query.severity;
+        
+        let alerts = this.healthMonitor.alerts;
+        
+        if (severity) {
+          alerts = alerts.filter(alert => alert.severity === severity);
+        }
+        
+        alerts = alerts.slice(-limit);
+        
+        res.json({
+          success: true,
+          data: {
+            alerts,
+            count: alerts.length,
+            total: this.healthMonitor.alerts.length
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error('Error getting alerts:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    // Control endpoints (requires auth)
+    this.router.post('/control/pause', authenticateApiKey, async (req, res) => {
+      try {
+        await this.healthMonitor.pause();
+        res.json({
+          success: true,
+          message: 'Health monitoring paused',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error('Error pausing health monitor:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    this.router.post('/control/resume', authenticateApiKey, async (req, res) => {
+      try {
+        await this.healthMonitor.resume();
+        res.json({
+          success: true,
+          message: 'Health monitoring resumed',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error('Error resuming health monitor:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    this.router.post('/control/force-check', authenticateApiKey, async (req, res) => {
+      try {
+        const results = await this.healthMonitor.runFullHealthCheck();
+        res.json({
+          success: true,
+          message: 'Health check completed',
+          data: results,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error('Error running forced health check:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    logger.info('Health Monitor: Routes configured');
+  }
+
+  /**
+   * Get the Express router for this plugin
+   */
+  getRouter() {
+    return this.router;
+  }
+
+  /**
+   * Get plugin status for health checks
+   */
+  getStatus() {
+    if (!this.initialized || !this.healthMonitor) {
+      return {
+        status: 'stopped',
+        message: 'Health Monitor plugin not initialized'
+      };
+    }
+
+    try {
+      const status = this.healthMonitor.getStatus();
+      return {
+        status: status.isRunning && !status.isPaused ? 'healthy' : 'unhealthy',
+        uptime: status.uptime,
+        lastCheck: status.lastFullHealthCheck,
+        message: 'Health Monitor plugin running'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: `Health Monitor plugin error: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Cleanup resources
+   */
+  async cleanup() {
+    try {
+      logger.info('Cleaning up Health Monitor Core Plugin...');
+      
+      if (this.healthMonitor) {
+        await this.healthMonitor.cleanup();
+      }
+      
+      this.initialized = false;
+      logger.info('Health Monitor Core Plugin cleaned up successfully');
+    } catch (error) {
+      logger.error('Error during Health Monitor cleanup:', error);
+      throw error;
+    }
   }
 }
 
-// Start the application
-if (require.main === module) {
-  startApplication();
-}
-
-module.exports = {
-  app,
-  healthMonitor,
-  startApplication
-}; 
+module.exports = HealthMonitorCorePlugin; 
